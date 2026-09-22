@@ -187,13 +187,10 @@
       getMessageNodes: () => document.querySelectorAll('message-content'),
       getRole: (node) => (node.hasAttribute('is-user') ? 'user' : 'assistant'),
       getContentElement: (node) => {
-        // Gemini renders message text inside a shadow root; pierce it and
-        // wrap the plain text so the shared renderer can still walk it.
-        // (Formatting like lists/code blocks isn't preserved this way —
-        // that's a known limitation, not something this revision changes.)
-        const rawText = getShadowText(node);
+        const root = node.shadowRoot || node;
         const wrapper = document.createElement('div');
-        wrapper.textContent = rawText;
+        // Preserves all native HTML structure instead of flattening it to text
+        wrapper.innerHTML = root.innerHTML;
         return wrapper;
       },
     },
@@ -277,52 +274,39 @@
     downloadBlob(`${safeFilename(data.title)}.txt`, lines.join('\n'), 'text/plain');
   }
  
-  function exportPdf(data, adapter) {
+ function exportPdf(data, adapter) {
     const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
- 
+    
+    // Build the styled HTML content
     const body = data.messages
-      .map(
-        (m) => `
-      <section class="msg msg--${esc(m.role)}">
-        <div class="msg__role">${esc(roleLabel(m.role, adapter))}</div>
-        <div class="msg__content">${m.html}</div>
-      </section>`
-      )
-      .join('\n');
- 
-    const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8" />
-<title>${esc(data.title)}</title>
-<style>
-  body { font-family: Georgia, 'Times New Roman', serif; color: #1E2A32; max-width: 720px; margin: 40px auto; line-height: 1.55; padding: 0 24px; }
-  h1 { font-size: 22px; margin-bottom: 2px; }
-  .meta { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; color: #55636B; margin-bottom: 28px; }
-  .msg { margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #D9D2C3; page-break-inside: avoid; }
-  .msg__role { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.03em; color: #355E56; margin-bottom: 6px; }
-  .msg--user .msg__role { color: #B8823B; }
-  .msg__content pre { background: #F1ECDF; padding: 10px 12px; overflow-x: auto; font-size: 12px; white-space: pre-wrap; }
-  .msg__content code { font-family: 'SFMono-Regular', Consolas, monospace; }
-  .msg__content img { max-width: 100%; }
-  @media print { body { margin: 0 24px; } .msg { break-inside: avoid; } }
-</style>
-</head>
-<body>
-  <h1>${esc(data.title)}</h1>
-  <div class="meta">Exported ${esc(new Date(data.exportedAt).toLocaleString())} &middot; ${esc(data.url)}</div>
-  ${body}
-  <script>
-    window.addEventListener('load', function () {
-      setTimeout(function () { window.print(); }, 300);
-    });
-  <\/script>
-</body>
-</html>`;
- 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
+      .map((m) => `
+        <div style="margin-bottom: 24px; padding: 16px; border-radius: 8px; background: ${m.role === 'user' ? '#f8fafc' : '#ffffff'}; border: 1px solid ${m.role === 'user' ? '#e2e8f0' : '#cbd5e1'}; page-break-inside: avoid;">
+          <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; color: #64748b; letter-spacing: 0.05em;">${esc(roleLabel(m.role, adapter))}</div>
+          <div style="font-size: 13px; line-height: 1.6; color: #0f172a;">${m.html}</div>
+        </div>
+      `).join('\n');
+
+    // Create a temporary container off-screen
+    const container = document.createElement('div');
+    container.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+    container.style.padding = '20px';
+    container.style.color = '#0f172a';
+    container.innerHTML = `
+      <h1 style="font-size: 20px; margin-bottom: 4px; font-weight: bold;">${esc(data.title)}</h1>
+      <div style="font-size: 11px; color: #64748b; margin-bottom: 32px;">Exported ${esc(new Date(data.exportedAt).toLocaleString())} &middot; ${esc(data.url)}</div>
+      ${body}
+    `;
+
+    // Configure and trigger the automatic silent download
+    const opt = {
+      margin:       10,
+      filename:     `${safeFilename(data.title)}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(container).save();
   }
  
   const FORMATS = {
