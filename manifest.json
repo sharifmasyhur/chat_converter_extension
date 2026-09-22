@@ -1,17 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "Conversation Archive for ChatGPT",
-  "version": "1.0.0",
-  "description": "Save your ChatGPT conversations as PDF, Markdown, or plain text — all processed locally in your browser.",
-  "permissions": ["activeTab", "scripting"],
+  "name": "Conversation Archive",
+  "version": "2.0.0",
+  "description": "Save your ChatGPT, Claude, or Gemini conversation as PDF, Markdown, or plain text — all processed locally in your browser.",
   "host_permissions": [
     "https://chatgpt.com/*",
     "https://claude.ai/*",
     "https://gemini.google.com/*"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Export this ChatGPT conversation",
+    "default_title": "Conversation Archive",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
@@ -27,9 +25,15 @@
     {
       "matches": [
         "https://chatgpt.com/*",
-        "https://chatgpt.com/*"
+        "https://claude.ai/*",
+        "https://gemini.google.com/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
       "run_at": "document_idle"
     }
   ]
