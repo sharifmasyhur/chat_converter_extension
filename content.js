@@ -108,7 +108,7 @@ function htmlFragmentTo(mode, containerEl) {
  * returns a cleaned clone (UI chrome like copy/thumbs buttons removed,
  * scripts/iframes stripped for safety).
  */
-function getMessageContentElement(node) {
+function getMessageContentElement(node, adapter) {
   let el = adapter.getContentElement(node);
   if (!el) el = node;
   const clone = el.cloneNode(true);
@@ -165,12 +165,37 @@ const PlatformAdapters = {
   },
   gemini: {
     detect: () => window.location.hostname.includes('gemini.google.com'),
-    // Gemini relies heavily on custom web components (e.g., message-content)
     getMessageNodes: () => document.querySelectorAll('message-content'),
     getRole: (node) => node.hasAttribute('is-user') ? 'user' : 'assistant',
-    getContentElement: (node) => node // Often the component itself holds the text
+    getContentElement: (node) => {
+      // Use your new function to pierce the Shadow DOM
+      const rawText = getShadowText(node);
+      
+      // Wrap it in a standard div so your renderer can clone and parse it
+      const wrapper = document.createElement('div');
+      // Replace newlines with <br> and <p> tags if needed to maintain structure, 
+      // or just insert as text if plain text is sufficient for now.
+      wrapper.textContent = rawText; 
+      
+      return wrapper;
+    }
   }
 };
+
+function getShadowText(node) {
+  // If the element has a shadow root, traverse inside it instead
+  const root = node.shadowRoot || node;
+  let text = '';
+  
+  for (const child of root.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      text += child.textContent;
+    } else if (child.nodeType === Node.ELEMENT_NODE) {
+      text += getShadowText(child);
+    }
+  }
+  return text;
+}
 
 function getActiveAdapter() {
   return Object.values(PlatformAdapters).find(adapter => adapter.detect());
