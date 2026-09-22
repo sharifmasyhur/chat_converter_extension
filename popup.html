@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Conversation Archive</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="card">
+    <header class="card__header">
+      <div class="wordmark">Conversation Archive</div>
+      <div class="subline" id="subline">Detecting ChatGPT tab…</div>
+    </header>
+
+    <div class="rows" id="rows">
+      <button class="row" data-format="pdf" disabled>
+        <span class="stamp stamp--pdf">PDF</span>
+        <span class="row__text">
+          <span class="row__title">Portable document</span>
+          <span class="row__desc">Print-ready, opens a save dialog</span>
+        </span>
+      </button>
+      <button class="row" data-format="md" disabled>
+        <span class="stamp stamp--md">MD</span>
+        <span class="row__text">
+          <span class="row__title">Markdown</span>
+          <span class="row__desc">Formatting kept, editable anywhere</span>
+        </span>
+      </button>
+      <button class="row" data-format="txt" disabled>
+        <span class="stamp stamp--txt">TXT</span>
+        <span class="row__text">
+          <span class="row__title">Plain text</span>
+          <span class="row__desc">No styling, opens anywhere</span>
+        </span>
+      </button>
+    </div>
+
+    <footer class="status" id="status"></footer>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
