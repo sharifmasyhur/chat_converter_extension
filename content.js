@@ -1,5 +1,5 @@
 // Conversation Archive for ChatGPT — content script
-// Runs on chatgpt.com / chat.openai.com. Reads the conversation already
+// Runs on chatgpt.com / chatgpt.com. Reads the conversation already
 // rendered on the page; never sends anything off the page.
 
 /**
@@ -109,7 +109,7 @@ function htmlFragmentTo(mode, containerEl) {
  * scripts/iframes stripped for safety).
  */
 function getMessageContentElement(node) {
-  let el = node.querySelector('.markdown') || node.querySelector('[class*="whitespace-pre-wrap"]');
+  let el = adapter.getContentElement(node);
   if (!el) el = node;
   const clone = el.cloneNode(true);
   clone
@@ -119,15 +119,19 @@ function getMessageContentElement(node) {
 }
 
 function extractConversation() {
-  const nodes = Array.from(document.querySelectorAll('[data-message-author-role]'));
+  const adapter = getActiveAdapter();
+  if (!adapter) throw new Error("Unsupported platform");
 
-  let title = (document.title || '').replace(/^ChatGPT\s*-?\s*/i, '').trim();
-  if (!title) title = 'ChatGPT Conversation';
+  const nodes = Array.from(adapter.getMessageNodes());
+
+  // Generalized title extraction
+  let title = (document.title || '').trim();
+  if (!title) title = 'AI Conversation Export';
 
   const messages = nodes
     .map((node) => {
-      const role = node.getAttribute('data-message-author-role') || 'unknown';
-      const contentEl = getMessageContentElement(node);
+      const role = adapter.getRole(node) || 'unknown';
+      const contentEl = getMessageContentElement(node, adapter);
       return {
         role,
         html: contentEl.innerHTML,
@@ -143,6 +147,33 @@ function extractConversation() {
     exportedAt: new Date().toISOString(),
     messages,
   };
+}
+
+const PlatformAdapters = {
+  chatgpt: {
+    detect: () => window.location.hostname.includes('chatgpt.com'),
+    getMessageNodes: () => document.querySelectorAll('[data-message-author-role]'),
+    getRole: (node) => node.getAttribute('data-message-author-role'),
+    getContentElement: (node) => node.querySelector('.markdown') || node
+  },
+  claude: {
+    detect: () => window.location.hostname.includes('claude.ai'),
+    // Claude uses different structural classes, often nested within flex containers
+    getMessageNodes: () => document.querySelectorAll('.font-claude-message'), 
+    getRole: (node) => node.closest('.is-user') ? 'user' : 'assistant',
+    getContentElement: (node) => node.querySelector('.prose') || node
+  },
+  gemini: {
+    detect: () => window.location.hostname.includes('gemini.google.com'),
+    // Gemini relies heavily on custom web components (e.g., message-content)
+    getMessageNodes: () => document.querySelectorAll('message-content'),
+    getRole: (node) => node.hasAttribute('is-user') ? 'user' : 'assistant',
+    getContentElement: (node) => node // Often the component itself holds the text
+  }
+};
+
+function getActiveAdapter() {
+  return Object.values(PlatformAdapters).find(adapter => adapter.detect());
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

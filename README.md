@@ -25,7 +25,7 @@ personal use.
 
 ## Use it
 
-1. Open a conversation on `chatgpt.com` (or `chat.openai.com`).
+1. Open a conversation on `chatgpt.com` (or `chatgpt.com`).
 2. Click the extension icon.
 3. Pick **PDF**, **Markdown**, or **Plain text**.
    - **Markdown / Plain text** download immediately.
